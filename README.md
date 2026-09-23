@@ -1,4 +1,4 @@
-# freedomnas-debian-repo
+# freedomnas-deb
 
 An APT repository for FreedomNAS on Debian: the four FreedomNAS packages
 themselves, and the one third-party package Debian does not carry.
