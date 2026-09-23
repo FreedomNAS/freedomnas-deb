@@ -61,7 +61,9 @@ nothing: the snapshot suffix keeps every build distinct, and
 ## 4. Runner
 
 No privileged access is needed — a Debian container, `dpkg-buildpackage` and
-`curl` — so Codeberg's hosted runner can do it. Codeberg's hosted Forgejo
+`curl` — so Codeberg's hosted runner can do it. The job installs `nodejs`
+in the container first: `actions/checkout` is a Node action and
+`debian:trixie` ships without it. Codeberg's hosted Forgejo
 Actions is in open alpha, so if it is unavailable the same workflow runs on a
 self-hosted runner unchanged; only `runs-on` has to name it.
 
