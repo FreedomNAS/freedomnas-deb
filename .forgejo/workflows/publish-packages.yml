@@ -1,0 +1,87 @@
+name: publish-packages
+
+# Rebuilds the FreedomNAS packages and publishes them to Codeberg's Debian
+# registry. Triggered manually, or by the component repositories'
+# notify-deb-repo.yml on every push, the same way core/profiles/webui
+# already trigger freedomnas-image-builder.
+#
+# Two kinds of build, and which one runs depends on the branch pushed:
+#
+#   dev   -> a snapshot, 1.0+<date>.<commit>, published to the `dev`
+#            component. Every small change gets a version of its own.
+#   main  -> a release, the version debian/changelog names, published to
+#            `main`. Raising 1.0 to 1.1 is a deliberate edit to that file,
+#            for a change that deserves it.
+#
+# An unchanged component is not a special case: the registry refuses a
+# version it already holds, publish-codeberg.sh reports that and moves on.
+#
+# Everything here is plain HTTP and dpkg-buildpackage inside a Debian
+# container, so Codeberg's hosted runner is enough -- unlike
+# freedomnas-image-builder's build job, which needs privileged access.
+# The secrets are documented in docs/ci-setup.md.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch of the component repositories to build"
+        type: string
+        default: dev
+  schedule:
+    # A daily snapshot catches anything the push triggers missed.
+    - cron: "17 4 * * *"
+
+jobs:
+  publish:
+    runs-on: docker
+    container:
+      image: debian:trixie
+    steps:
+      - name: Install the packaging tooling
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git rsync \
+            dpkg-dev debhelper fakeroot \
+            python3-all python3-setuptools pybuild-plugin-pyproject
+
+      - name: Check out freedomnas-deb
+        uses: actions/checkout@v4
+        with:
+          path: freedomnas-deb
+
+      - name: Check out the components
+        env:
+          REF: ${{ inputs.ref || 'dev' }}
+        run: |
+          for repo in freedomnas-core freedomnas-profiles freedomnas-webui freedomnas-installer; do
+            git clone --depth 50 --branch "$REF" \
+              "https://codeberg.org/FreedomNAS/$repo.git" "$repo"
+          done
+
+      - name: Build
+        env:
+          REF: ${{ inputs.ref || 'dev' }}
+        run: |
+          cd freedomnas-deb
+          if [ "$REF" = "main" ]; then
+              bin/build-freedomnas-debs.sh
+              # topgrade follows upstream, not our commits: it is rebuilt
+              # with releases so a new base version carries it along.
+              bin/build-topgrade-deb.sh
+          else
+              SNAPSHOT=1 bin/build-freedomnas-debs.sh
+          fi
+
+      - name: Publish
+        env:
+          REF: ${{ inputs.ref || 'dev' }}
+          CODEBERG_USER: ${{ secrets.PACKAGE_REGISTRY_USER }}
+          CODEBERG_TOKEN: ${{ secrets.PACKAGE_REGISTRY_TOKEN }}
+        run: |
+          cd freedomnas-deb
+          if [ "$REF" = "main" ]; then
+              COMPONENT=main bin/publish-codeberg.sh
+          else
+              COMPONENT=dev bin/publish-codeberg.sh
+          fi

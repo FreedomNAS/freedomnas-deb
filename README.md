@@ -25,6 +25,8 @@ compiled here. Gentoo gets the same treatment through
 ```sh
 bin/build-freedomnas-debs.sh         # all four FreedomNAS packages
 bin/build-freedomnas-debs.sh freedomnas-webui
+SNAPSHOT=1 bin/build-freedomnas-debs.sh   # ...as 1.0+<date>.<commit>
+bin/version.sh --snapshot ../freedomnas-core
 bin/build-topgrade-deb.sh            # the recorded topgrade version
 bin/build-topgrade-deb.sh 17.12.1    # a specific one
 bin/make-repo.sh                     # APT metadata for whatever is in pool/
@@ -66,7 +68,13 @@ hand, and the `.deb` files land in the packages quota rather than in git.
 
 ```sh
 CODEBERG_USER=<username> CODEBERG_TOKEN=<token> bin/publish-codeberg.sh
+COMPONENT=dev ... bin/publish-codeberg.sh     # snapshots, kept apart
 ```
+
+`.forgejo/workflows/publish-packages.yml` does this by itself on every push
+to the component repositories: `dev` becomes a snapshot in the `dev`
+component, `main` a release in `main`. [docs/ci-setup.md](docs/ci-setup.md)
+lists the two secrets it needs.
 
 The token needs the `package` scope with write access (Settings →
 Applications → Access Tokens). It is read from the environment and handed to

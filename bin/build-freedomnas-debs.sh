@@ -4,6 +4,12 @@
 #
 #   bin/build-freedomnas-debs.sh                     # all four
 #   bin/build-freedomnas-debs.sh freedomnas-webui    # one of them
+#   SNAPSHOT=1 bin/build-freedomnas-debs.sh          # ...at 1.0+<date>.<commit>
+#
+# A release build takes the version from debian/changelog. A snapshot build
+# keeps that base and appends the commit it was built from, which is what
+# every automatic rebuild uses: the registry refuses a version it already
+# has, and raising the base version stays a deliberate act.
 #
 # Each source tree is copied to a temporary directory first: dpkg-buildpackage
 # writes its artifacts next to the tree it builds, and a git checkout is not
@@ -35,8 +41,13 @@ for name in $COMPONENTS; do
     src="$SRC_ROOT/$name"
     [ -d "$src/debian" ] || { echo "build-freedomnas-debs.sh: no debian/ in $src" >&2; exit 1; }
 
-    echo "==> $name"
+    version="$("$(dirname -- "$0")/version.sh" ${SNAPSHOT:+--snapshot} "$src")"
+    echo "==> $name $version"
     rsync -a --exclude '.git' --exclude '__pycache__' "$src/" "$WORK/$name/"
+
+    # The copy's changelog carries the version this build is published under;
+    # the checkout's own changelog is left alone.
+    sed -i "1s/^\([^(]*\)([^)]*)/\1($version)/" "$WORK/$name/debian/changelog"
 
     ( cd "$WORK/$name" && dpkg-checkbuilddeps ) || {
         echo "build-freedomnas-debs.sh: $name is missing build dependencies (above)" >&2
