@@ -17,9 +17,10 @@ name: publish-packages
 # version it already holds, publish-codeberg.sh reports that and moves on.
 #
 # Everything here is plain HTTP and dpkg-buildpackage inside a Debian
-# container, so Codeberg's hosted runner is enough -- unlike
-# freedomnas-image-builder's build job, which needs privileged access.
-# The secrets are documented in docs/ci-setup.md.
+# container, with no privileged access. Codeberg's own runners do not
+# pick these jobs up, so `runs-on: docker` is served by a self-hosted
+# runner registered on FreedomNAS. The runner and the secrets are
+# documented in docs/ci-setup.md.
 on:
   workflow_dispatch:
     inputs:

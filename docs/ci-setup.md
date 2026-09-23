@@ -60,12 +60,48 @@ nothing: the snapshot suffix keeps every build distinct, and
 
 ## 4. Runner
 
-No privileged access is needed — a Debian container, `dpkg-buildpackage` and
-`curl` — so Codeberg's hosted runner can do it. The job installs `nodejs`
-in the container first: `actions/checkout` is a Node action and
-`debian:trixie` ships without it. Codeberg's hosted Forgejo
-Actions is in open alpha, so if it is unavailable the same workflow runs on a
-self-hosted runner unchanged; only `runs-on` has to name it.
+Codeberg's own runners do not pick these jobs up: the workflow asks for
+`runs-on: docker`, and that label is served by a self-hosted Forgejo runner
+registered on the **FreedomNAS organisation**, so one runner serves every
+repository in it. The job needs no privileged access — a Debian container,
+`dpkg-buildpackage` and `curl` — so any machine with Docker will do.
+
+Setting one up:
+
+1. Install `forgejo-runner` (12 or later) and Docker, and give the runner's
+   user access to the Docker socket.
+2. On Codeberg: FreedomNAS → Settings → Actions → Runners → **Create new
+   runner**. Codeberg shows a `url`, a `uuid` and a `token`.
+3. Put them in the runner's `config.yaml`, with the token in a file only the
+   runner's user can read:
+
+   ```yaml
+   runner:
+     labels:
+       - "docker:docker://node:20-bookworm"
+   server:
+     connections:
+       codeberg:
+         url: https://codeberg.org/
+         uuid: <uuid>
+         token_url: file:/var/lib/forgejo-runner/codeberg-token
+   ```
+
+4. Start `forgejo-runner daemon --config <path>/config.yaml` as a service.
+   The log says `declared successfully` once Codeberg accepts it, and the
+   runner shows as idle on the organisation's runner page.
+
+Codeberg lets a runner ask for work every 30 seconds at most, so a job can
+wait that long before it starts.
+
+The job runs in `debian:trixie` and installs its own tooling first:
+`build-essential`, which `dpkg-checkbuilddeps` always requires but
+`--no-install-recommends` leaves out, and `nodejs`, because
+`actions/checkout` is a Node action and the image ships without it.
+
+A runner whose user is in the `docker` group is root on its machine, and
+anyone who can push a workflow to the organisation can use it. That is fine
+while the organisation's members are trusted; otherwise run it in a VM.
 
 Without any runner at all, the scripts are still the whole of the job:
 
