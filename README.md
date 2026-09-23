@@ -58,7 +58,38 @@ checksums/topgrade-<version>.sha256
 Only `bin/`, `checksums/` and this file are tracked. The pool and the
 `dists` tree are rebuilt from them, so they stay out of git.
 
-## Using it
+## Publishing to Codeberg
+
+Codeberg runs Forgejo, which has a Debian registry: it builds and signs the
+repository metadata itself, so nothing here has to be served or signed by
+hand, and the `.deb` files land in the packages quota rather than in git.
+
+```sh
+CODEBERG_USER=<username> CODEBERG_TOKEN=<token> bin/publish-codeberg.sh
+```
+
+The token needs the `package` scope with write access (Settings →
+Applications → Access Tokens). It is read from the environment and handed to
+curl on stdin, so it stays out of the process list. A version that is
+already published is refused: delete it in the web interface, or raise the
+version in `debian/changelog`.
+
+Then, on the machine:
+
+```sh
+curl -o /etc/apt/keyrings/freedomnas.asc \
+    https://codeberg.org/api/packages/FreedomNAS/debian/repository.key
+echo "deb [signed-by=/etc/apt/keyrings/freedomnas.asc] \
+    https://codeberg.org/api/packages/FreedomNAS/debian trixie main" \
+    > /etc/apt/sources.list.d/freedomnas.list
+apt update && apt install freedomnas-webui
+```
+
+`bin/make-repo.sh` and the `dists/` tree remain for serving the pool as
+plain static files, which is the fallback if the registry is ever not an
+option.
+
+## Using it from a static copy
 
 Serve the directory over HTTP — any static host will do — and on the
 FreedomNAS machine:
