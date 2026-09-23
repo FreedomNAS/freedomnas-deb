@@ -42,7 +42,7 @@ jobs:
           apt-get update -qq
           apt-get install -y --no-install-recommends \
             ca-certificates curl git nodejs rsync \
-            dpkg-dev debhelper fakeroot \
+            build-essential dpkg-dev debhelper fakeroot \
             python3-all python3-setuptools pybuild-plugin-pyproject
 
       - name: Check out freedomnas-deb

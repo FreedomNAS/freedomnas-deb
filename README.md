@@ -36,7 +36,7 @@ GPG_KEY=<key-id> bin/make-repo.sh    # ...signed
 `build-freedomnas-debs.sh` copies each source tree to a temporary directory
 before building, because `dpkg-buildpackage` writes its artifacts next to
 the tree it builds and a git checkout is not the place for them. It needs
-`dpkg-dev`, `debhelper`, `fakeroot`, `rsync` and — for `freedomnas-core` —
+`build-essential`, `dpkg-dev`, `debhelper`, `fakeroot`, `rsync` and — for `freedomnas-core` —
 `python3-all`, `python3-setuptools` and `pybuild-plugin-pyproject`.
 
 The first build of a version records the tarball's SHA-256 under
