@@ -37,7 +37,7 @@ GPG_KEY=<key-id> bin/make-repo.sh    # ...signed
 before building, because `dpkg-buildpackage` writes its artifacts next to
 the tree it builds and a git checkout is not the place for them. It needs
 `build-essential`, `dpkg-dev`, `debhelper`, `fakeroot`, `rsync` and — for `freedomnas-core` —
-`python3-all`, `python3-setuptools` and `pybuild-plugin-pyproject`.
+`dh-python`.
 
 The first build of a version records the tarball's SHA-256 under
 `checksums/`; every build after that verifies against it, so an upstream
