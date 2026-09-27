@@ -44,7 +44,8 @@ jobs:
           apt-get install -y --no-install-recommends \
             ca-certificates curl git nodejs rsync \
             build-essential dpkg-dev debhelper fakeroot \
-            python3-all python3-setuptools pybuild-plugin-pyproject
+            python3-all python3-setuptools pybuild-plugin-pyproject \
+            mkdocs mkdocs-material python3-pymdownx
 
       - name: Check out freedomnas-deb
         uses: actions/checkout@v4
@@ -55,7 +56,7 @@ jobs:
         env:
           REF: ${{ inputs.ref || 'dev' }}
         run: |
-          for repo in freedomnas-core freedomnas-profiles freedomnas-webui freedomnas-installer; do
+          for repo in freedomnas-core freedomnas-profiles freedomnas-docs freedomnas-webui freedomnas-installer; do
             git clone --depth 50 --branch "$REF" \
               "https://codeberg.org/FreedomNAS/$repo.git" "$repo"
           done

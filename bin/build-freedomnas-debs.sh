@@ -2,7 +2,7 @@
 # Build the FreedomNAS packages from the checkouts beside this repository and
 # drop them into the pool.
 #
-#   bin/build-freedomnas-debs.sh                     # all four
+#   bin/build-freedomnas-debs.sh                     # all five
 #   bin/build-freedomnas-debs.sh freedomnas-webui    # one of them
 #   SNAPSHOT=1 bin/build-freedomnas-debs.sh          # ...at 1.0+<date>.<commit>
 #
@@ -23,7 +23,7 @@ set -eu
 
 REPO_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 SRC_ROOT="$(dirname "$REPO_DIR")"
-DEFAULT_COMPONENTS="freedomnas-profiles freedomnas-core freedomnas-webui freedomnas-installer"
+DEFAULT_COMPONENTS="freedomnas-profiles freedomnas-core freedomnas-docs freedomnas-webui freedomnas-installer"
 COMPONENTS="${*:-$DEFAULT_COMPONENTS}"
 
 for tool in dpkg-buildpackage dpkg-checkbuilddeps fakeroot rsync; do

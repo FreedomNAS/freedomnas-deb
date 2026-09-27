@@ -1,11 +1,11 @@
 # freedomnas-deb
 
-An APT repository for FreedomNAS on Debian: the four FreedomNAS packages
+An APT repository for FreedomNAS on Debian: the five FreedomNAS packages
 themselves, and the one third-party package Debian does not carry.
 
 | Package | Source |
 |---------|--------|
-| `freedomnas-core`, `freedomnas-profiles`, `freedomnas-webui`, `freedomnas-installer` | built from the checkouts beside this one |
+| `freedomnas-core`, `freedomnas-profiles`, `freedomnas-docs`, `freedomnas-webui`, `freedomnas-installer` | built from the checkouts beside this one |
 | `topgrade` | upstream's release binary, wrapped in a `.deb` |
 
 Everything else FreedomNAS installs on Debian is already in the
@@ -23,7 +23,7 @@ compiled here. Gentoo gets the same treatment through
 ## Building
 
 ```sh
-bin/build-freedomnas-debs.sh         # all four FreedomNAS packages
+bin/build-freedomnas-debs.sh         # all five FreedomNAS packages
 bin/build-freedomnas-debs.sh freedomnas-webui
 SNAPSHOT=1 bin/build-freedomnas-debs.sh   # ...as 1.0+<date>.<commit>
 bin/version.sh --snapshot ../freedomnas-core
@@ -37,7 +37,9 @@ GPG_KEY=<key-id> bin/make-repo.sh    # ...signed
 before building, because `dpkg-buildpackage` writes its artifacts next to
 the tree it builds and a git checkout is not the place for them. It needs
 `build-essential`, `dpkg-dev`, `debhelper`, `fakeroot`, `rsync` and — for `freedomnas-core` —
-`dh-python`.
+`dh-python`; `freedomnas-docs` is built with Debian's own `mkdocs`,
+`mkdocs-material` and `python3-pymdownx`, and needs no network: its fonts are
+in the repository.
 
 The first build of a version records the tarball's SHA-256 under
 `checksums/`; every build after that verifies against it, so an upstream
