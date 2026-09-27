@@ -128,3 +128,11 @@ Once the repository is hosted, the Debian edition's installer profile gets
 a `repositories.core` entry that writes that file, and `topgrade` joins
 `packages/core.json` for Debian the way `app-admin/topgrade-bin` already
 has for Gentoo.
+
+## License
+
+GPL-2.0-or-later: the GNU General Public License, version 2 or (at your
+option) any later version. The text of version 2 is in `LICENSE`.
+
+The packages built from here keep the licenses of what they package —
+MPL-2.0 for the FreedomNAS components.
