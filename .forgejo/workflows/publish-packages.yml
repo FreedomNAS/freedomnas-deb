@@ -61,6 +61,17 @@ jobs:
               "https://codeberg.org/FreedomNAS/$repo.git" "$repo"
           done
 
+      - name: Check out linux-freedomnas
+        run: git clone --depth 1 --branch dev https://codeberg.org/FreedomNAS/linux-freedomnas linux-freedomnas
+
+      - name: Build the kernel if its version is not published yet
+        env:
+          REF: ${{ inputs.ref || 'dev' }}
+        run: |
+          cd freedomnas-deb
+          INSTALL_BUILD_DEPS=1 SKIP_PUBLISHED=1 COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" \
+              bin/build-kernel-debs.sh "$PWD/../linux-freedomnas"
+
       - name: Build
         env:
           REF: ${{ inputs.ref || 'dev' }}
@@ -87,3 +98,9 @@ jobs:
           else
               COMPONENT=dev bin/publish-codeberg.sh
           fi
+
+      - name: Delete superseded versions
+        env:
+          CODEBERG_USER: ${{ secrets.PACKAGE_REGISTRY_USER }}
+          CODEBERG_TOKEN: ${{ secrets.PACKAGE_REGISTRY_TOKEN }}
+        run: python3 freedomnas-deb/bin/prune-registry.py

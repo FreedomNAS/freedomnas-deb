@@ -1,22 +1,26 @@
 # CI setup
 
 `.forgejo/workflows/publish-packages.yml` rebuilds the packages and pushes
-them to Codeberg's Debian registry. It needs two secrets here, and one in
-each component repository. Until they are set, the workflow fails at the
+them to Codeberg's Debian registry. It needs two organization secrets, and
+one in each component repository. Until they are set, the workflow fails at the
 step that would have used them — nothing is published by accident.
 
-## 1. The registry token (secrets on **this** repository)
+## 1. The registry token (secrets on the **FreedomNAS organization**)
 
-The workflow uploads with `bin/publish-codeberg.sh`, which authenticates as
-a user.
+The workflow uploads with `bin/publish-codeberg.sh` and deletes superseded
+versions with `bin/prune-registry.py`; both authenticate as a user.
+freedomnas-arch's workflow uses the same two secrets.
 
 1. On Codeberg: Settings → Applications → Access Tokens.
 2. Create a token with the **`package`** scope, write access. That is all it
    needs: it cannot push code or change settings.
 3. Copy it — Codeberg shows it once.
-4. Here: Settings → Actions → Secrets, add
+4. On the organization: FreedomNAS → Settings → Actions → Secrets, add
    - `PACKAGE_REGISTRY_USER` — the Codeberg username the token belongs to
    - `PACKAGE_REGISTRY_TOKEN` — the token
+
+Secrets with the same name on a repository override the organization's, so
+keep none there.
 
 **Rotating**: create the new token, update `PACKAGE_REGISTRY_TOKEN`, then
 revoke the old one. Nothing overlaps, because each run reads the secret when

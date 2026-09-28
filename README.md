@@ -7,6 +7,7 @@ themselves, and the one third-party package Debian does not carry.
 |---------|--------|
 | `freedomnas-core`, `freedomnas-profiles`, `freedomnas-docs`, `freedomnas-webui`, `freedomnas-installer` | built from the checkouts beside this one |
 | `topgrade` | upstream's release binary, wrapped in a `.deb` |
+| `linux-image-freedomnas`, `linux-headers-freedomnas`, `zfsutils-freedomnas` | built from the `linux-freedomnas` checkout beside this one |
 
 Everything else FreedomNAS installs on Debian is already in the
 distribution — ZFS included, through `contrib` and `stable-backports`, which
@@ -29,6 +30,9 @@ SNAPSHOT=1 bin/build-freedomnas-debs.sh   # ...as 1.0+<date>.<commit>
 bin/version.sh --snapshot ../freedomnas-core
 bin/build-topgrade-deb.sh            # the recorded topgrade version
 bin/build-topgrade-deb.sh 17.12.1    # a specific one
+bin/build-kernel-debs.sh             # kernel, headers, ZFS userspace (~1 hour)
+DRY_RUN=1 bin/prune-registry.py      # what the workflow would delete: all but the
+                                     # 2 newest snapshots, releases and kernels
 bin/make-repo.sh                     # APT metadata for whatever is in pool/
 GPG_KEY=<key-id> bin/make-repo.sh    # ...signed
 ```

@@ -1,3 +1,4 @@
 # Built from bin/, not tracked
 pool/
 dists/
+.cache/
