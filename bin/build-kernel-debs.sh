@@ -6,6 +6,7 @@
 #   bin/build-kernel-debs.sh /path/to/linux-freedomnas
 #   INSTALL_BUILD_DEPS=1 bin/build-kernel-debs.sh   # apt-get build-dep first (root)
 #   SKIP_PUBLISHED=1 COMPONENT=dev bin/build-kernel-debs.sh
+#   CCACHE_DIR=/ccache bin/build-kernel-debs.sh     # compile through ccache
 #
 # Versions, tarballs and checksums come from the checkout's PKGBUILD, the
 # same file the Arch package is built from, so both editions ship the same
@@ -83,7 +84,19 @@ fi
     echo "build-kernel-debs.sh: missing build dependencies (above)" >&2
     exit 1
 }
+# CCACHE_DIR, when set, is a cache kept between builds: a rebuild then
+# recompiles only what changed. The tree is a new temporary directory each
+# time, hence the base dir and no-hashdir.
+if [ -n "${CCACHE_DIR:-}" ]; then
+    command -v ccache >/dev/null || {
+        echo "build-kernel-debs.sh: CCACHE_DIR is set but ccache is not installed" >&2
+        exit 1
+    }
+    export PATH="/usr/lib/ccache:$PATH" CCACHE_BASEDIR="$WORK" CCACHE_NOHASHDIR=1 \
+        CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-10G}"
+fi
 ( cd "$tree" && dpkg-buildpackage -us -uc -b -j"$(nproc)" )
+if [ -n "${CCACHE_DIR:-}" ]; then ccache --show-stats; fi
 
 dest="$REPO_DIR/pool/main/l/linux-freedomnas"
 install -d "$dest"

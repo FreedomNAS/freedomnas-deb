@@ -89,7 +89,16 @@ Setting one up:
          url: https://codeberg.org/
          uuid: <uuid>
          token_url: file:/var/lib/forgejo-runner/codeberg-token
+   container:
+     valid_volumes:
+       - /var/cache/freedomnas-ccache/**
    ```
+
+   `valid_volumes` lets the jobs mount the kernel's ccache, a host
+   directory kept between runs (`debian/` and `arch/` under it, one per
+   workflow, since their compilers differ). With it a kernel rebuild
+   recompiles only what changed; without it the workflow fails to start.
+   Each cache is capped at 10 GB (`CCACHE_MAXSIZE`).
 
 4. Start `forgejo-runner daemon --config <path>/config.yaml` as a service.
    The log says `declared successfully` once Codeberg accepts it, and the

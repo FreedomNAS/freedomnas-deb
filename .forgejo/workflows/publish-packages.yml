@@ -37,12 +37,16 @@ jobs:
     runs-on: docker
     container:
       image: debian:trixie
+      # The kernel's ccache, kept on the runner host between runs; the
+      # runner's config.yaml must list it in valid_volumes.
+      volumes:
+        - /var/cache/freedomnas-ccache/debian:/ccache
     steps:
       - name: Install the packaging tooling
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends \
-            ca-certificates curl git nodejs rsync \
+            ca-certificates ccache curl git nodejs rsync \
             build-essential dpkg-dev debhelper fakeroot \
             python3-all python3-setuptools pybuild-plugin-pyproject \
             mkdocs mkdocs-material python3-pymdownx
@@ -69,7 +73,7 @@ jobs:
           REF: ${{ inputs.ref || 'dev' }}
         run: |
           cd freedomnas-deb
-          INSTALL_BUILD_DEPS=1 SKIP_PUBLISHED=1 COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" \
+          CCACHE_DIR=/ccache INSTALL_BUILD_DEPS=1 SKIP_PUBLISHED=1 COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" \
               bin/build-kernel-debs.sh "$PWD/../linux-freedomnas"
 
       - name: Build
