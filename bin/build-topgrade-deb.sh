@@ -9,7 +9,7 @@
 #   bin/build-topgrade-deb.sh [version]
 set -eu
 
-VERSION="${1:-17.12.1}"
+VERSION="${1:-17.12.3}"
 ARCH="amd64"
 TARBALL="topgrade-v${VERSION}-x86_64-unknown-linux-musl.tar.gz"
 URL="https://github.com/topgrade-rs/topgrade/releases/download/v${VERSION}/${TARBALL}"

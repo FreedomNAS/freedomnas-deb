@@ -29,7 +29,7 @@ bin/build-freedomnas-debs.sh freedomnas-webui
 SNAPSHOT=1 bin/build-freedomnas-debs.sh   # ...as 1.0+<date>.<commit>
 bin/version.sh --snapshot ../freedomnas-core
 bin/build-topgrade-deb.sh            # the recorded topgrade version
-bin/build-topgrade-deb.sh 17.12.1    # a specific one
+bin/build-topgrade-deb.sh 17.12.3    # a specific one
 bin/build-kernel-debs.sh             # kernel, headers, ZFS userspace (~1 hour)
 DRY_RUN=1 bin/prune-registry.py      # what the workflow would delete: all but the
                                      # 2 newest snapshots, releases and kernels

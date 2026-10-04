@@ -2,7 +2,7 @@
 # Upload every .deb in the pool to Codeberg's Debian package registry.
 #
 #   CODEBERG_USER=<user> CODEBERG_TOKEN=<token> bin/publish-codeberg.sh
-#   ... bin/publish-codeberg.sh pool/main/t/topgrade/topgrade_17.12.1_amd64.deb
+#   ... bin/publish-codeberg.sh pool/main/t/topgrade/topgrade_17.12.3_amd64.deb
 #
 # The token needs the `package` scope (write). Create it under
 # Settings -> Applications -> Access Tokens. It is read from the environment
