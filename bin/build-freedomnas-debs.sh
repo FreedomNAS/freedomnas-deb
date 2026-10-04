@@ -49,6 +49,8 @@ for name in $COMPONENTS; do
     # the checkout's own changelog is left alone.
     sed -i "1s/^\([^(]*\)([^)]*)/\1($version)/" "$WORK/$name/debian/changelog"
 
+    if [ -n "${SNAPSHOT:-}" ]; then echo dev; else echo main; fi > "$WORK/$name/CHANNEL"
+
     ( cd "$WORK/$name" && dpkg-checkbuilddeps ) || {
         echo "build-freedomnas-debs.sh: $name is missing build dependencies (above)" >&2
         exit 1
