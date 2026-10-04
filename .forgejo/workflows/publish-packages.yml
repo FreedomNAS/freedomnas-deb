@@ -7,11 +7,13 @@ name: publish-packages
 #
 # Two kinds of build, and which one runs depends on the branch pushed:
 #
-#   dev   -> a snapshot, 0.9.9+<date>.<commit>, published to the `dev`
-#            component. Every small change gets a version of its own.
-#   main  -> a release, the version debian/changelog names, published to
-#            `main`. Raising 0.9.9 to 1.0 is a deliberate edit to that file,
-#            for a change that deserves it.
+#   dev   -> a snapshot, 0.9.10+<date and time>.<commit>, published to
+#            the `dev` component. Every small change gets a version of
+#            its own.
+#   main  -> a release, built from the newest release tag (vX.Y.Z) at
+#            the version debian/changelog names there, published to
+#            `main`. Raising 0.9.10 to 0.9.11 is a deliberate edit to that
+#            file, followed by a tag.
 #
 # An unchanged component is not a special case: the registry refuses a
 # version it already holds, publish-codeberg.sh reports that and moves on.
@@ -56,12 +58,25 @@ jobs:
         with:
           path: freedomnas-deb
 
-      - name: Check out the components
+      # A release is built from the newest release tag (vX.Y.Z, the same
+      # name in every FreedomNAS repository), not from the tip of main.
+      - name: Pick the ref to build
         env:
           REF: ${{ inputs.ref || 'dev' }}
         run: |
+          ref="$REF"
+          if [ "$ref" = main ]; then
+            ref="$(git ls-remote --tags --refs https://codeberg.org/FreedomNAS/freedomnas-core.git 'v*' \
+              | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+(\.[0-9]+)*$' | sort -V | tail -n 1)"
+            [ -n "$ref" ] || { echo "no release tag on freedomnas-core" >&2; exit 1; }
+          fi
+          echo "Building $ref"
+          echo "SRC_REF=$ref" >> "$GITHUB_ENV"
+
+      - name: Check out the components
+        run: |
           for repo in freedomnas-core freedomnas-profiles freedomnas-docs freedomnas-webui freedomnas-installer; do
-            git clone --depth 50 --branch "$REF" \
+            git clone --depth 50 --branch "$SRC_REF" \
               "https://codeberg.org/FreedomNAS/$repo.git" "$repo"
           done
 
