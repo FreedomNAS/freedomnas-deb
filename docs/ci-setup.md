@@ -45,21 +45,21 @@ a single revocation to stop both.
 
 | Push to | Version | Published to |
 |---------|---------|--------------|
-| `dev` | `1.0+<date>.<commit>-1`, from `bin/version.sh --snapshot` | component `dev` |
-| `main` | what `debian/changelog` says, e.g. `1.0-1` | component `main` |
+| `dev` | `0.9.9+<UTC date and time>.<commit>-1`, from `bin/version.sh --snapshot` | component `dev` |
+| `main` | what `debian/changelog` says, e.g. `0.9.9-1` | component `main` |
 
-Installed systems follow `main`, which is what
-`installer-debian.json`'s `repositories.core` writes into
-`sources.list.d`. To follow snapshots on a test machine, add a second line
-with `dev` in place of `main`.
+A system follows one component only: `installer-debian.json`'s
+`repositories.core` writes the installer's channel, `main` for an image or
+live ISO built from `main`, `dev` otherwise. Never list both: the snapshots
+sort above the releases.
 
 A base version is raised by editing `debian/changelog` in the component
-repository — `1.0` to `1.1` when a change deserves it. Small changes need
+repository — `0.9.9` to `1.0` when a change deserves it. Small changes need
 nothing: the snapshot suffix keeps every build distinct, and
 `dpkg --compare-versions` puts them in the right order:
 
 ```
-1.0-1  <  1.0+20260923.a54c544-1  <  1.1-1
+0.9.9-1  <  0.9.9+20261004103357.8232059-1  <  0.9.9+20261004123558.3f8bb72-1  <  1.0-1
 ```
 
 ## 4. Runner

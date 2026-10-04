@@ -26,7 +26,7 @@ compiled here. Gentoo gets the same treatment through
 ```sh
 bin/build-freedomnas-debs.sh         # all five FreedomNAS packages
 bin/build-freedomnas-debs.sh freedomnas-webui
-SNAPSHOT=1 bin/build-freedomnas-debs.sh   # ...as 1.0+<date>.<commit>
+SNAPSHOT=1 bin/build-freedomnas-debs.sh   # ...as 0.9.9+<date and time>.<commit>
 bin/version.sh --snapshot ../freedomnas-core
 bin/build-topgrade-deb.sh            # the recorded topgrade version
 bin/build-topgrade-deb.sh 17.12.3    # a specific one

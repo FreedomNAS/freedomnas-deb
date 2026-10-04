@@ -1,15 +1,16 @@
 #!/bin/sh
 # Print the version a package should be built with.
 #
-#   bin/version.sh ../freedomnas-core              -> 1.0-1
-#   bin/version.sh --snapshot ../freedomnas-core   -> 1.0+20260923.a54c544-1
+#   bin/version.sh ../freedomnas-core              -> 0.9.9-1
+#   bin/version.sh --snapshot ../freedomnas-core   -> 0.9.9+20261004155904.a54c544-1
 #
-# The base version is whatever debian/changelog says, and raising it — 1.0 to
-# 1.1 — stays a decision someone makes when the change deserves it. A
-# snapshot keeps that base and appends the commit's date and hash, so every
-# build of a small change gets a version of its own: the registry refuses to
-# publish the same version twice, and `1.0+...` sorts after `1.0-1` while
-# staying below `1.1-1`.
+# The base version is whatever debian/changelog says, and raising it — 0.9.9
+# to 1.0 — stays a decision someone makes when the change deserves it. A
+# snapshot keeps that base and appends the commit's UTC date and time and its
+# hash, so every build of a small change gets a version of its own: the
+# registry refuses to publish the same version twice, `0.9.9+...` sorts after
+# `0.9.9-1` while staying below `1.0-1`, and two commits of the same day sort
+# by time, never by their hashes.
 set -eu
 
 snapshot=0
@@ -36,6 +37,6 @@ git -C "$src" rev-parse --git-dir >/dev/null 2>&1 || {
 
 upstream="${base%-*}"
 revision="${base##*-}"
-date="$(git -C "$src" log -1 --format=%cd --date=format:%Y%m%d)"
+date="$(TZ=UTC git -C "$src" log -1 --format=%cd --date=format-local:%Y%m%d%H%M%S)"
 sha="$(git -C "$src" log -1 --format=%h)"
 printf '%s+%s.%s-%s\n' "$upstream" "$date" "$sha" "$revision"

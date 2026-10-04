@@ -4,7 +4,7 @@
 #
 #   bin/build-freedomnas-debs.sh                     # all five
 #   bin/build-freedomnas-debs.sh freedomnas-webui    # one of them
-#   SNAPSHOT=1 bin/build-freedomnas-debs.sh          # ...at 1.0+<date>.<commit>
+#   SNAPSHOT=1 bin/build-freedomnas-debs.sh          # ...at 0.9.9+<date and time>.<commit>
 #
 # A release build takes the version from debian/changelog. A snapshot build
 # keeps that base and appends the commit it was built from, which is what
