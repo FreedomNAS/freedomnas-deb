@@ -94,14 +94,15 @@ Then, on the machine:
 curl -o /etc/apt/keyrings/freedomnas.asc \
     https://codeberg.org/api/packages/FreedomNAS/debian/repository.key
 echo "deb [signed-by=/etc/apt/keyrings/freedomnas.asc] \
-    https://codeberg.org/api/packages/FreedomNAS/debian trixie main dev" \
+    https://codeberg.org/api/packages/FreedomNAS/debian trixie main" \
     > /etc/apt/sources.list.d/freedomnas.list
 apt update && apt install freedomnas-webui
 ```
 
-`dev` holds the snapshots, `main` the releases and topgrade; with both, apt
-takes the newest of each package, and until the first release after 1.0-1
-that is the snapshot. The installer's Debian profile writes the same line.
+`main` holds the releases, `dev` the snapshots; the kernel and topgrade are
+in both. A machine reads one component only, `main` or `dev`: the
+installer's Debian profile writes the one matching the branch its image or
+live ISO was built from.
 
 `bin/make-repo.sh` and the `dists/` tree remain for serving the pool as
 plain static files, which is the fallback if the registry is ever not an

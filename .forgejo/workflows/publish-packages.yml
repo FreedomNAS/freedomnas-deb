@@ -7,10 +7,10 @@ name: publish-packages
 #
 # Two kinds of build, and which one runs depends on the branch pushed:
 #
-#   dev   -> a snapshot, 1.0+<date>.<commit>, published to the `dev`
+#   dev   -> a snapshot, 0.9.9+<date>.<commit>, published to the `dev`
 #            component. Every small change gets a version of its own.
 #   main  -> a release, the version debian/changelog names, published to
-#            `main`. Raising 1.0 to 1.1 is a deliberate edit to that file,
+#            `main`. Raising 0.9.9 to 1.0 is a deliberate edit to that file,
 #            for a change that deserves it.
 #
 # An unchanged component is not a special case: the registry refuses a
@@ -83,12 +83,12 @@ jobs:
           cd freedomnas-deb
           if [ "$REF" = "main" ]; then
               bin/build-freedomnas-debs.sh
-              # topgrade follows upstream, not our commits: it is rebuilt
-              # with releases so a new base version carries it along.
-              bin/build-topgrade-deb.sh
           else
               SNAPSHOT=1 bin/build-freedomnas-debs.sh
           fi
+          # topgrade follows upstream, not our commits, and goes to both
+          # components: an installation reads only one of them.
+          bin/build-topgrade-deb.sh
 
       - name: Publish
         env:
