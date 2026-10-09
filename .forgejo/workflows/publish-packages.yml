@@ -104,6 +104,7 @@ jobs:
           # topgrade follows upstream, not our commits, and goes to both
           # components: an installation reads only one of them.
           bin/build-topgrade-deb.sh
+          COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" bin/build-repository-deb.sh
 
       - name: Publish
         env:

@@ -8,6 +8,7 @@ themselves, and the one third-party package Debian does not carry.
 | `freedomnas-core`, `freedomnas-profiles`, `freedomnas-docs`, `freedomnas-webui`, `freedomnas-installer` | built from the checkouts beside this one |
 | `topgrade` | upstream's release binary, wrapped in a `.deb` |
 | `linux-image-freedomnas`, `linux-headers-freedomnas`, `zfsutils-freedomnas` | built from the `linux-freedomnas` checkout beside this one |
+| `freedomnas-repository` | this repository's APT source and signing key, one build per component |
 
 Everything else FreedomNAS installs on Debian is already in the
 distribution — ZFS included, through `contrib` and `stable-backports`, which
@@ -31,6 +32,7 @@ bin/version.sh --snapshot ../freedomnas-core
 bin/build-topgrade-deb.sh            # the recorded topgrade version
 bin/build-topgrade-deb.sh 17.12.3    # a specific one
 bin/build-kernel-debs.sh             # kernel, headers, ZFS userspace (~1 hour)
+COMPONENT=dev bin/build-repository-deb.sh   # APT source + key for `trixie dev`
 DRY_RUN=1 bin/prune-registry.py      # what the workflow would delete: all but the
                                      # 2 newest snapshots, releases and kernels
 bin/make-repo.sh                     # APT metadata for whatever is in pool/
@@ -88,7 +90,28 @@ curl on stdin, so it stays out of the process list. A version that is
 already published is refused: delete it in the web interface, or raise the
 version in `debian/changelog`.
 
-Then, on the machine:
+Then, on the machine, the one package `freedomnas-repository` sets up the
+source and the key:
+
+```sh
+curl -LO https://codeberg.org/api/packages/FreedomNAS/debian/pool/trixie/main/freedomnas-repository_1.0_all.deb
+sudo apt install ./freedomnas-repository_1.0_all.deb
+sudo apt update
+sudo apt install freedomnas-installer
+sudo freedomnas-install --mode inplace
+```
+
+`pool/trixie/dev/…` is the same package for the snapshots. It writes
+`/etc/apt/sources.list.d/freedomnas.sources` with the key in
+`/usr/share/keyrings/freedomnas-archive-keyring.asc`, and removes the
+one-line `freedomnas.list` the installer writes, since apt refuses one
+repository listed twice with different `Signed-By` keys. It is published to
+the repository it configures, so a new key or address reaches machines as an
+ordinary update. `bin/build-repository-deb.sh` records the key's SHA-256 in
+`checksums/repository-key.sha256` and refuses a key that differs from it;
+replacing the key means deleting that file and raising the package version.
+
+By hand, the same thing is:
 
 ```sh
 curl -o /etc/apt/keyrings/freedomnas.asc \
