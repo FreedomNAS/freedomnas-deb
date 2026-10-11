@@ -6,6 +6,7 @@
 #   bin/build-kernel-debs.sh /path/to/linux-freedomnas
 #   INSTALL_BUILD_DEPS=1 bin/build-kernel-debs.sh   # apt-get build-dep first (root)
 #   SKIP_PUBLISHED=1 COMPONENT=dev bin/build-kernel-debs.sh
+#   CHECK_ONLY=1 COMPONENT=dev bin/build-kernel-debs.sh   # exit 0 if published, 1 if not
 #   CCACHE_DIR=/ccache bin/build-kernel-debs.sh     # compile through ccache
 #
 # Versions, tarballs and checksums come from the checkout's PKGBUILD, the
@@ -28,6 +29,19 @@ COMPONENT="${COMPONENT:-main}"
     echo "build-kernel-debs.sh: $SRC is not a linux-freedomnas checkout" >&2
     exit 1
 }
+pkgbuild() { bash -c 'source "$1/PKGBUILD" >/dev/null 2>&1; eval "echo \"\$$2\""' _ "$SRC" "$1"; }
+version="$(pkgbuild pkgver)-$(pkgbuild pkgrel)"
+echo "==> linux-freedomnas $version"
+
+if [ -n "${SKIP_PUBLISHED:-}${CHECK_ONLY:-}" ]; then
+    url="https://codeberg.org/api/packages/$OWNER/debian/pool/$DISTRIBUTION/$COMPONENT/linux-image-freedomnas_${version}_amd64.deb"
+    if [ "$(curl -s -o /dev/null -r 0-0 -w '%{http_code}' "$url")" = 206 ]; then
+        echo "    already published in $DISTRIBUTION/$COMPONENT"
+        exit 0
+    fi
+    [ -z "${CHECK_ONLY:-}" ] || { echo "    not published in $DISTRIBUTION/$COMPONENT"; exit 1; }
+fi
+
 for tool in bash curl dpkg-buildpackage dpkg-checkbuilddeps rsync sha256sum; do
     command -v "$tool" >/dev/null || {
         echo "build-kernel-debs.sh: $tool not found — run this in a Debian container" >&2
@@ -35,17 +49,6 @@ for tool in bash curl dpkg-buildpackage dpkg-checkbuilddeps rsync sha256sum; do
     }
 done
 
-pkgbuild() { bash -c 'source "$1/PKGBUILD" >/dev/null 2>&1; eval "echo \"\$$2\""' _ "$SRC" "$1"; }
-version="$(pkgbuild pkgver)-$(pkgbuild pkgrel)"
-echo "==> linux-freedomnas $version"
-
-if [ -n "${SKIP_PUBLISHED:-}" ]; then
-    url="https://codeberg.org/api/packages/$OWNER/debian/pool/$DISTRIBUTION/$COMPONENT/linux-image-freedomnas_${version}_amd64.deb"
-    if [ "$(curl -s -o /dev/null -r 0-0 -w '%{http_code}' "$url")" = 206 ]; then
-        echo "    already published in $DISTRIBUTION/$COMPONENT"
-        exit 0
-    fi
-fi
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

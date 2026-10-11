@@ -64,11 +64,18 @@ nothing: the snapshot suffix keeps every build distinct, and
 
 ## 4. Runner
 
-Codeberg's own runners do not pick these jobs up: the workflow asks for
-`runs-on: docker`, and that label is served by a self-hosted Forgejo runner
-registered on the **FreedomNAS organisation**, so one runner serves every
-repository in it. The job needs no privileged access — a Debian container,
-`dpkg-buildpackage` and `curl` — so any machine with Docker will do.
+The workflow has three jobs. `packages` (the FreedomNAS packages, topgrade,
+freedomnas-repository and the community modules) runs on Codeberg's own
+runners (`runs-on: codeberg-medium`), and `kernel-check` on the smallest one
+(`codeberg-tiny-lazy`): they need nothing of ours, so the packages are
+published even when the self-hosted runner is off. Only `kernel` asks for
+`runs-on: docker`, and only when `kernel-check` finds this kernel version
+missing from the registry (`CHECK_ONLY=1 bin/build-kernel-debs.sh`): it takes
+the better part of an hour and keeps its ccache on the runner's host. That
+label is served by a self-hosted Forgejo runner registered on the
+**FreedomNAS organisation**, so one runner serves every repository in it.
+The job needs no privileged access — a Debian container, `dpkg-buildpackage`
+and `curl` — so any machine with Docker will do.
 
 Setting one up:
 
