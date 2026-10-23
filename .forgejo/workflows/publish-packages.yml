@@ -90,7 +90,7 @@ jobs:
       - name: Check out the community modules
         run: |
           modules=""
-          for repo in freedomnas-containers; do
+          for repo in freedomnas-containers freedomnas-proxy; do
             url="https://codeberg.org/FreedomNAS/$repo.git"
             if [ "$REF" = main ]; then
               ref="$(git ls-remote --tags --refs "$url" 'v*' \
