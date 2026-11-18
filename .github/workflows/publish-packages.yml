@@ -154,12 +154,18 @@ jobs:
       - name: Check out linux-freedomnas
         run: git clone --depth 1 --branch dev "$ORG_URL/linux-freedomnas.git" linux-freedomnas
 
+      - name: Read the kernel version
+        id: version
+        run: echo "kernel=$(bash -c 'source linux-freedomnas/PKGBUILD >/dev/null 2>&1; echo "$pkgver-$pkgrel"')" >> "$GITHUB_OUTPUT"
+
       - name: Restore the ccache
         uses: actions/cache@v4
         with:
           path: /ccache
-          key: ccache-kernel-debian-${{ github.run_id }}
-          restore-keys: ccache-kernel-debian-
+          key: ccache-kernel-debian-${{ steps.version.outputs.kernel }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-kernel-debian-${{ steps.version.outputs.kernel }}-
+            ccache-kernel-debian-
 
       - name: Build the kernel
         run: |
