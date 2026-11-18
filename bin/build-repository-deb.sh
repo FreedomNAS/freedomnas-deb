@@ -19,6 +19,11 @@ esac
 
 REPO_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 POOL="$REPO_DIR/pool/$COMPONENT/f/freedomnas-repository"
+
+if [ -n "${PUBLISHED_PACKAGES:-}" ] && "$REPO_DIR/bin/is-published.sh" "$PUBLISHED_PACKAGES" freedomnas-repository "$VERSION"; then
+    echo "==> freedomnas-repository $VERSION already published"
+    exit 0
+fi
 SUMS="$REPO_DIR/checksums/repository-key.sha256"
 
 for tool in curl dpkg-deb sha256sum; do

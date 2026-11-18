@@ -16,6 +16,11 @@ URL="https://github.com/topgrade-rs/topgrade/releases/download/v${VERSION}/${TAR
 
 REPO_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 POOL="$REPO_DIR/pool/main/t/topgrade"
+
+if [ -n "${PUBLISHED_PACKAGES:-}" ] && "$REPO_DIR/bin/is-published.sh" "$PUBLISHED_PACKAGES" topgrade "$VERSION"; then
+    echo "==> topgrade $VERSION already published"
+    exit 0
+fi
 SUMS="$REPO_DIR/checksums/topgrade-${VERSION}.sha256"
 
 for tool in curl tar dpkg-deb sha256sum; do

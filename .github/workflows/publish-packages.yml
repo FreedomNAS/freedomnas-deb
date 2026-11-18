@@ -9,6 +9,10 @@ name: publish-packages
 #
 # packages, kernel-check and kernel only build; publish runs once at the end
 # with everything they produced, so two jobs never write the same release.
+#
+# Every hour for each channel, but nothing is rebuilt that is already
+# published: a component's version names its commit, so an unchanged
+# branch builds nothing and publishes nothing.
 
 on:
   workflow_dispatch:
@@ -20,17 +24,18 @@ on:
   repository_dispatch:
     types: [component-pushed]
   schedule:
-    - cron: "17 4 * * *"
+    - cron: "17 * * * *"
+    - cron: "47 * * * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: publish-packages-${{ inputs.ref || github.event.client_payload.ref || 'dev' }}
+  group: publish-packages-${{ inputs.ref || github.event.client_payload.ref || (github.event.schedule == '47 * * * *' && 'main') || 'dev' }}
   cancel-in-progress: false
 
 env:
-  REF: ${{ inputs.ref || github.event.client_payload.ref || 'dev' }}
+  REF: ${{ inputs.ref || github.event.client_payload.ref || (github.event.schedule == '47 * * * *' && 'main') || 'dev' }}
   ORG_URL: https://github.com/FreedomNAS
 
 jobs:
@@ -38,6 +43,8 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: debian:trixie
+    outputs:
+      built: ${{ steps.pool.outputs.count }}
     steps:
       - name: Install the packaging tooling
         run: |
@@ -64,6 +71,13 @@ jobs:
           fi
           echo "Building $ref"
           echo "SRC_REF=$ref" >> "$GITHUB_ENV"
+          echo "COMPONENT=$([ "$REF" = main ] && echo main || echo dev)" >> "$GITHUB_ENV"
+
+      - name: Fetch the list of published packages
+        run: |
+          curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/apt-$COMPONENT/Packages" \
+            -o "$GITHUB_WORKSPACE/published-Packages" || : > "$GITHUB_WORKSPACE/published-Packages"
+          echo "PUBLISHED_PACKAGES=$GITHUB_WORKSPACE/published-Packages" >> "$GITHUB_ENV"
 
       - name: Check out the components
         run: |
@@ -100,13 +114,17 @@ jobs:
               [ -z "$MODULES" ] || SNAPSHOT=1 bin/build-freedomnas-debs.sh $MODULES
           fi
           bin/build-topgrade-deb.sh
-          COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" bin/build-repository-deb.sh
+          bin/build-repository-deb.sh
+
+      - name: Count the new packages
+        id: pool
+        run: echo "count=$(find freedomnas-deb/pool -name '*.deb' 2>/dev/null | wc -l)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
+        if: steps.pool.outputs.count != '0'
         with:
           name: packages
           path: freedomnas-deb/pool/
-          if-no-files-found: error
 
   kernel-check:
     runs-on: ubuntu-24.04
@@ -181,7 +199,10 @@ jobs:
 
   publish:
     needs: [packages, kernel]
-    if: always() && needs.packages.result == 'success' && needs.kernel.result != 'failure' && needs.kernel.result != 'cancelled'
+    if: >-
+      always() && needs.packages.result == 'success'
+      && needs.kernel.result != 'failure' && needs.kernel.result != 'cancelled'
+      && (needs.packages.outputs.built != '0' || needs.kernel.result == 'success')
     runs-on: ubuntu-24.04
     container:
       image: debian:trixie

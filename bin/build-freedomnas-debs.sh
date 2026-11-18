@@ -5,6 +5,7 @@
 #   bin/build-freedomnas-debs.sh                     # all five
 #   bin/build-freedomnas-debs.sh freedomnas-webui    # one of them
 #   SNAPSHOT=1 bin/build-freedomnas-debs.sh          # ...at 0.9.9+<date and time>.<commit>
+#   PUBLISHED_PACKAGES=Packages bin/build-freedomnas-debs.sh  # skip what is already published
 #
 # A release build takes the version from debian/changelog. A snapshot build
 # keeps that base and appends the commit it was built from, which is what
@@ -43,6 +44,11 @@ for name in $COMPONENTS; do
 
     version="$("$(dirname -- "$0")/version.sh" ${SNAPSHOT:+--snapshot} "$src")"
     echo "==> $name $version"
+    package="$(sed -n 's/^Source: *//p' "$src/debian/control" | head -n 1)"
+    if [ -n "${PUBLISHED_PACKAGES:-}" ] && "$(dirname -- "$0")/is-published.sh" "$PUBLISHED_PACKAGES" "$package" "$version"; then
+        echo "    already published"
+        continue
+    fi
     rsync -a --exclude '.git' --exclude '__pycache__' "$src/" "$WORK/$name/"
 
     # The copy's changelog carries the version this build is published under;
