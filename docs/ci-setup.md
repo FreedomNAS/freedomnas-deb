@@ -30,10 +30,18 @@ The workflow itself needs no other secret: it publishes with the
 
 - **Manual**: Actions → publish-packages → Run workflow, `ref` = `dev` or
   `main`.
-- **Daily** at 04:17 UTC, a `dev` snapshot.
+- **Every hour**: `dev` at minute 17, `main` at minute 47.
 - **From the component repositories**: a `repository_dispatch` of type
   `component-pushed` with `{"ref": "dev"}` or `{"ref": "main"}` in its
   payload.
+
+Nothing already published is rebuilt. `packages` downloads the channel's
+`Packages` and hands it to the build scripts (`PUBLISHED_PACKAGES`); each
+component, topgrade and freedomnas-repository is skipped when
+`bin/is-published.sh` finds its package at the version it would be built
+with. A snapshot's version names its commit, so a branch nobody touched
+builds nothing, and `publish` runs only when there is a new package or a
+new kernel.
 
 ## 3. Which build a push produces
 
