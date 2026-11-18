@@ -1,4 +1,5 @@
 name: publish-packages
+run-name: ${{ github.workflow }} (${{ inputs.ref || (github.event.schedule == '47 * * * *' && 'main') || 'dev' }})
 
 # Rebuilds the FreedomNAS packages and publishes them as a flat, signed APT
 # repository in this repository's releases: apt-dev for the development
