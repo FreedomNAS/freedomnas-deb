@@ -4,7 +4,7 @@ name: publish-packages
 # repository in this repository's releases: apt-dev for the development
 # snapshots, apt-main for the releases (see bin/publish-github.py).
 #
-#   dev   -> a snapshot, 0.9.10+<date and time>.<commit>
+#   dev   -> a snapshot, <version>+<date and time>.<commit>
 #   main  -> a release, built from the newest release tag (vX.Y.Z)
 #
 # packages, kernel-check and kernel only build; publish runs once at the end
