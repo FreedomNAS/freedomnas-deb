@@ -10,9 +10,10 @@ name: publish-packages
 # packages, kernel-check and kernel only build; publish runs once at the end
 # with everything they produced, so two jobs never write the same release.
 #
-# Every hour for each channel, but nothing is rebuilt that is already
-# published: a component's version names its commit, so an unchanged
-# branch builds nothing and publishes nothing.
+# Started by gather-pushes ten minutes after the last push to a component,
+# and every hour for each channel as a safety net. Nothing already published
+# is rebuilt: a component's version names its commit, so an unchanged branch
+# builds nothing and publishes nothing.
 
 on:
   workflow_dispatch:
@@ -21,8 +22,6 @@ on:
         description: "Branch of the component repositories to build"
         type: string
         default: dev
-  repository_dispatch:
-    types: [component-pushed]
   schedule:
     - cron: "17 * * * *"
     - cron: "47 * * * *"
@@ -31,11 +30,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: publish-packages-${{ inputs.ref || github.event.client_payload.ref || (github.event.schedule == '47 * * * *' && 'main') || 'dev' }}
+  group: publish-packages-${{ inputs.ref || (github.event.schedule == '47 * * * *' && 'main') || 'dev' }}
   cancel-in-progress: false
 
 env:
-  REF: ${{ inputs.ref || github.event.client_payload.ref || (github.event.schedule == '47 * * * *' && 'main') || 'dev' }}
+  REF: ${{ inputs.ref || (github.event.schedule == '47 * * * *' && 'main') || 'dev' }}
   ORG_URL: https://github.com/FreedomNAS
 
 jobs:

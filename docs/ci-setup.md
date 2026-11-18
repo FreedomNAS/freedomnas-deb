@@ -28,12 +28,32 @@ The workflow itself needs no other secret: it publishes with the
 
 ## 2. Triggers
 
+- **From the component repositories**: each of them (core, profiles, docs,
+  webui, installer, the community modules, linux-freedomnas) runs
+  `notify-packages` on every push to `dev` or `main` and on every `v*` tag.
+  It sends this repository a `repository_dispatch` of type
+  `component-pushed`, with `ref` (`dev`, or `main` for main and tags),
+  `repository` and `sha` in its payload.
+- **`gather-pushes`** receives them. Each dispatch waits ten minutes, and a
+  newer one of the same channel cancels the wait, so a burst of pushes to
+  several repositories starts `publish-packages` once, ten minutes after the
+  last push, with the newest commit of every component. The cancelled waits
+  show up as cancelled runs of `gather-pushes`: that is expected.
+- **Every hour**, as a safety net: `dev` at minute 17, `main` at minute 47.
 - **Manual**: Actions → publish-packages → Run workflow, `ref` = `dev` or
   `main`.
-- **Every hour**: `dev` at minute 17, `main` at minute 47.
-- **From the component repositories**: a `repository_dispatch` of type
-  `component-pushed` with `{"ref": "dev"}` or `{"ref": "main"}` in its
-  payload.
+
+The components need the organization secret **`PACKAGES_DISPATCH_TOKEN`**:
+a fine-grained personal access token whose resource owner is FreedomNAS,
+with access to `freedomnas-deb` only and the repository permission
+*Contents: Read and write* (what `POST /repos/{repo}/dispatches` asks for):
+
+```sh
+gh secret set PACKAGES_DISPATCH_TOKEN --org FreedomNAS --visibility all
+```
+
+`gather-pushes` starts `publish-packages` with the run's own `GITHUB_TOKEN`
+(`permissions: actions: write`).
 
 Nothing already published is rebuilt. `packages` downloads the channel's
 `Packages` and hands it to the build scripts (`PUBLISHED_PACKAGES`); each
