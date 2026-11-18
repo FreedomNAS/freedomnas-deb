@@ -6,11 +6,11 @@
 #   COMPONENT=main bin/build-repository-deb.sh [version]
 set -eu
 
-VERSION="${1:-1.1}"
+VERSION="${1:-1.2}"
 COMPONENT="${COMPONENT:-main}"
 DISTRIBUTION="${DISTRIBUTION:-trixie}"
-OWNER="${CODEBERG_OWNER:-FreedomNAS}"
-BASE="https://codeberg.org/api/packages/$OWNER/debian"
+APT_REPO="${GITHUB_APT_REPO:-FreedomNAS/freedomnas-deb}"
+BASE="https://github.com/$APT_REPO/releases/download/apt-$COMPONENT/"
 
 case "$COMPONENT" in
     main|dev) ;;
@@ -28,10 +28,7 @@ done
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-echo "==> Fetching the registry's signing key"
-curl -fsSL --retry 3 -o "$WORK/freedomnas-archive-keyring.asc" "$BASE/repository.key"
-grep -q 'BEGIN PGP PUBLIC KEY BLOCK' "$WORK/freedomnas-archive-keyring.asc" \
-    || { echo "build-repository-deb.sh: $BASE/repository.key is not a public key" >&2; exit 1; }
+cp "$REPO_DIR/keys/freedomnas-archive-keyring.asc" "$WORK/freedomnas-archive-keyring.asc"
 
 if [ -f "$SUMS" ]; then
     echo "==> Verifying against $SUMS"
@@ -55,8 +52,7 @@ install -m 644 "$WORK/docker.asc" "$PKG/usr/share/freedomnas-repository/docker.a
 cat > "$PKG/etc/apt/sources.list.d/freedomnas.sources" <<SOURCES
 Types: deb
 URIs: $BASE
-Suites: $DISTRIBUTION
-Components: $COMPONENT
+Suites: ./
 Signed-By: /usr/share/keyrings/freedomnas-archive-keyring.asc
 SOURCES
 echo /etc/apt/sources.list.d/freedomnas.sources > "$PKG/DEBIAN/conffiles"
@@ -66,7 +62,7 @@ cat > "$PKG/DEBIAN/postinst" <<'POSTINST'
 set -e
 if [ "$1" = configure ]; then
     legacy=/etc/apt/sources.list.d/freedomnas.list
-    if [ -f "$legacy" ] && grep -q 'codeberg.org/api/packages/FreedomNAS/debian' "$legacy"; then
+    if [ -f "$legacy" ] && grep -q -E 'codeberg.org/api/packages/FreedomNAS/debian|github.com/FreedomNAS/freedomnas-deb/releases' "$legacy"; then
         rm -f "$legacy"
     fi
     # Docker's repository, written the way the installer and the containers
@@ -108,9 +104,9 @@ Architecture: all
 Maintainer: FreedomNAS Team <dev@freedomnas.io>
 Installed-Size: ${INSTALLED_KB}
 Depends: ca-certificates
-Homepage: https://codeberg.org/FreedomNAS
+Homepage: https://github.com/FreedomNAS
 Description: APT source and signing key of the FreedomNAS repository
- Configures APT to install FreedomNAS from its repository on Codeberg,
+ Configures APT to install FreedomNAS from its repository on GitHub,
  following ${CHANNEL}, and Docker's repository, where the containers
  module's Docker comes from. After installing it, run
  apt update and apt install freedomnas-installer.

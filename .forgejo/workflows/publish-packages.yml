@@ -31,6 +31,8 @@ name: publish-packages
 #
 # Everything is plain HTTP and dpkg-buildpackage inside a Debian container,
 # with no privileged access.
+# Switched off since the move to GitHub (ADR-003): manual dispatch only,
+# so that nothing is published twice. See .github/workflows/.
 on:
   workflow_dispatch:
     inputs:
@@ -38,9 +40,6 @@ on:
         description: "Branch of the component repositories to build"
         type: string
         default: dev
-  schedule:
-    # A daily snapshot catches anything the push triggers missed.
-    - cron: "17 4 * * *"
 
 jobs:
   packages:

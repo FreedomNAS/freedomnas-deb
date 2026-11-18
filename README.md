@@ -68,68 +68,64 @@ checksums/topgrade-<version>.sha256
 Only `bin/`, `checksums/` and this file are tracked. The pool and the
 `dists` tree are rebuilt from them, so they stay out of git.
 
-## Publishing to Codeberg
+## Publishing to GitHub
 
-Codeberg runs Forgejo, which has a Debian registry: it builds and signs the
-repository metadata itself, so nothing here has to be served or signed by
-hand, and the `.deb` files land in the packages quota rather than in git.
+The repository is a flat APT repository in this repository's GitHub
+releases, one per channel: `apt-main` for the releases, `apt-dev` for the
+snapshots. `bin/publish-github.py` uploads the packages the release does not
+hold yet, writes `Packages`, `Release` and `InRelease`, signs them with the
+FreedomNAS archive key and deletes superseded versions:
 
 ```sh
-CODEBERG_USER=<username> CODEBERG_TOKEN=<token> bin/publish-codeberg.sh
-COMPONENT=dev ... bin/publish-codeberg.sh     # snapshots, kept apart
+GH_TOKEN=<token> COMPONENT=main bin/publish-github.py
+GH_TOKEN=<token> COMPONENT=dev bin/publish-github.py     # snapshots, kept apart
 ```
 
-`.forgejo/workflows/publish-packages.yml` does this by itself on every push
-to the component repositories: `dev` becomes a snapshot in the `dev`
-component, `main` a release in `main`. [docs/ci-setup.md](docs/ci-setup.md)
-lists the two secrets it needs.
-
-The token needs the `package` scope with write access (Settings →
-Applications → Access Tokens). It is read from the environment and handed to
-curl on stdin, so it stays out of the process list. A version that is
-already published is refused: delete it in the web interface, or raise the
-version in `debian/changelog`.
+`.github/workflows/publish-packages.yml` does this by itself: `dev` becomes a
+snapshot in `apt-dev`, `main` a release in `apt-main`.
+[docs/ci-setup.md](docs/ci-setup.md) lists the one secret it needs, the
+private half of the signing key.
 
 Then, on the machine, the one package `freedomnas-repository` sets up the
 source and the key:
 
 ```sh
-curl -LO https://codeberg.org/api/packages/FreedomNAS/debian/pool/trixie/main/freedomnas-repository_1.0_all.deb
-sudo apt install ./freedomnas-repository_1.0_all.deb
+curl -LO https://github.com/FreedomNAS/freedomnas-deb/releases/download/apt-main/freedomnas-repository_1.2_all.deb
+sudo apt install ./freedomnas-repository_1.2_all.deb
 sudo apt update
 sudo apt install freedomnas-installer
 sudo freedomnas-install --mode inplace
 ```
 
-`pool/trixie/dev/…` is the same package for the snapshots. It writes
+`apt-dev` holds the same package for the snapshots. It writes
 `/etc/apt/sources.list.d/freedomnas.sources` with the key in
 `/usr/share/keyrings/freedomnas-archive-keyring.asc`, and removes the
 one-line `freedomnas.list` the installer writes, since apt refuses one
 repository listed twice with different `Signed-By` keys. It is published to
 the repository it configures, so a new key or address reaches machines as an
-ordinary update. `bin/build-repository-deb.sh` records the key's SHA-256 in
-`checksums/repository-key.sha256` and refuses a key that differs from it;
-replacing the key means deleting that file and raising the package version.
+ordinary update. The public key lives in `keys/freedomnas-archive-keyring.asc`;
+`bin/build-repository-deb.sh` checks it against
+`checksums/repository-key.sha256` and refuses a key that differs from it.
+Replacing the key means updating both and raising the package version.
 
 By hand, the same thing is:
 
 ```sh
-curl -o /etc/apt/keyrings/freedomnas.asc \
-    https://codeberg.org/api/packages/FreedomNAS/debian/repository.key
+curl -Lo /etc/apt/keyrings/freedomnas.asc \
+    https://github.com/FreedomNAS/freedomnas-deb/releases/download/apt-main/freedomnas-archive-keyring.asc
 echo "deb [signed-by=/etc/apt/keyrings/freedomnas.asc] \
-    https://codeberg.org/api/packages/FreedomNAS/debian trixie main" \
+    https://github.com/FreedomNAS/freedomnas-deb/releases/download/apt-main/ ./" \
     > /etc/apt/sources.list.d/freedomnas.list
 apt update && apt install freedomnas-webui
 ```
 
-`main` holds the releases, `dev` the snapshots; the kernel and topgrade are
-in both. A machine reads one component only, `main` or `dev`: the
-installer's Debian profile writes the one matching the branch its image or
-live ISO was built from.
+A machine reads one channel only, `apt-main` or `apt-dev`; the kernel and
+topgrade are in both.
 
-`bin/make-repo.sh` and the `dists/` tree remain for serving the pool as
-plain static files, which is the fallback if the registry is ever not an
-option.
+`bin/publish-codeberg.sh` and `bin/prune-registry.py` published to Codeberg's
+Debian registry until the move to GitHub (ADR-003); they are kept for
+reference. `bin/make-repo.sh` and the `dists/` tree remain for serving the
+pool as plain static files.
 
 ## Using it from a static copy
 

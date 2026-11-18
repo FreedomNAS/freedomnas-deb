@@ -1,0 +1,212 @@
+name: publish-packages
+
+# Rebuilds the FreedomNAS packages and publishes them as a flat, signed APT
+# repository in this repository's releases: apt-dev for the development
+# snapshots, apt-main for the releases (see bin/publish-github.py).
+#
+#   dev   -> a snapshot, 0.9.10+<date and time>.<commit>
+#   main  -> a release, built from the newest release tag (vX.Y.Z)
+#
+# packages, kernel-check and kernel only build; publish runs once at the end
+# with everything they produced, so two jobs never write the same release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch of the component repositories to build"
+        type: string
+        default: dev
+  repository_dispatch:
+    types: [component-pushed]
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-packages-${{ inputs.ref || github.event.client_payload.ref || 'dev' }}
+  cancel-in-progress: false
+
+env:
+  REF: ${{ inputs.ref || github.event.client_payload.ref || 'dev' }}
+  ORG_URL: https://github.com/FreedomNAS
+
+jobs:
+  packages:
+    runs-on: ubuntu-24.04
+    container:
+      image: debian:trixie
+    steps:
+      - name: Install the packaging tooling
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git rsync \
+            build-essential dpkg-dev debhelper fakeroot \
+            python3-all python3-setuptools pybuild-plugin-pyproject \
+            mkdocs mkdocs-material python3-pymdownx
+
+      - name: Check out freedomnas-deb
+        uses: actions/checkout@v4
+        with:
+          path: freedomnas-deb
+
+      - name: Pick the ref to build
+        run: |
+          case "$REF" in dev|main) ;; *) echo "ref must be dev or main, not $REF" >&2; exit 1 ;; esac
+          ref="$REF"
+          if [ "$ref" = main ]; then
+            ref="$(git ls-remote --tags --refs "$ORG_URL/freedomnas-core.git" 'v*' \
+              | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+(\.[0-9]+)*$' | sort -V | tail -n 1)"
+            [ -n "$ref" ] || { echo "no release tag on freedomnas-core" >&2; exit 1; }
+          fi
+          echo "Building $ref"
+          echo "SRC_REF=$ref" >> "$GITHUB_ENV"
+
+      - name: Check out the components
+        run: |
+          for repo in freedomnas-core freedomnas-profiles freedomnas-docs freedomnas-webui freedomnas-installer; do
+            git clone --depth 50 --branch "$SRC_REF" "$ORG_URL/$repo.git" "$repo"
+          done
+
+      - name: Check out the community modules
+        run: |
+          modules=""
+          for repo in freedomnas-containers freedomnas-proxy; do
+            url="$ORG_URL/$repo.git"
+            if [ "$REF" = main ]; then
+              ref="$(git ls-remote --tags --refs "$url" 'v*' \
+                | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+(\.[0-9]+)*$' | sort -V | tail -n 1)"
+              [ -n "$ref" ] || { echo "$repo has no release tag yet: not built for main"; continue; }
+            else
+              ref=dev
+            fi
+            echo "Building $repo at $ref"
+            git clone --depth 50 --branch "$ref" "$url" "$repo"
+            modules="$modules $repo"
+          done
+          echo "MODULES=$modules" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          cd freedomnas-deb
+          if [ "$REF" = "main" ]; then
+              bin/build-freedomnas-debs.sh
+              [ -z "$MODULES" ] || bin/build-freedomnas-debs.sh $MODULES
+          else
+              SNAPSHOT=1 bin/build-freedomnas-debs.sh
+              [ -z "$MODULES" ] || SNAPSHOT=1 bin/build-freedomnas-debs.sh $MODULES
+          fi
+          bin/build-topgrade-deb.sh
+          COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" bin/build-repository-deb.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: freedomnas-deb/pool/
+          if-no-files-found: error
+
+  kernel-check:
+    runs-on: ubuntu-24.04
+    outputs:
+      missing: ${{ steps.check.outputs.missing }}
+    steps:
+      - name: Check out freedomnas-deb
+        uses: actions/checkout@v4
+        with:
+          path: freedomnas-deb
+
+      - name: Check out linux-freedomnas
+        run: git clone --depth 1 --branch dev "$ORG_URL/linux-freedomnas.git" linux-freedomnas
+
+      - name: Is this kernel version published?
+        id: check
+        run: |
+          if CHECK_ONLY=1 COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" \
+              sh freedomnas-deb/bin/build-kernel-debs.sh "$PWD/linux-freedomnas"; then
+            echo "missing=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+  kernel:
+    needs: kernel-check
+    if: needs.kernel-check.outputs.missing == 'yes'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    container:
+      image: debian:trixie
+    steps:
+      - name: Install the packaging tooling
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            ca-certificates ccache curl git rsync zstd \
+            build-essential dpkg-dev debhelper fakeroot python3
+
+      - name: Check out freedomnas-deb
+        uses: actions/checkout@v4
+        with:
+          path: freedomnas-deb
+
+      - name: Check out linux-freedomnas
+        run: git clone --depth 1 --branch dev "$ORG_URL/linux-freedomnas.git" linux-freedomnas
+
+      - name: Restore the ccache
+        uses: actions/cache@v4
+        with:
+          path: /ccache
+          key: ccache-kernel-debian-${{ github.run_id }}
+          restore-keys: ccache-kernel-debian-
+
+      - name: Build the kernel
+        run: |
+          cd freedomnas-deb
+          CCACHE_DIR=/ccache INSTALL_BUILD_DEPS=1 COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" \
+              bin/build-kernel-debs.sh "$GITHUB_WORKSPACE/linux-freedomnas"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel
+          path: freedomnas-deb/pool/
+          if-no-files-found: error
+
+  publish:
+    needs: [packages, kernel]
+    if: always() && needs.packages.result == 'success' && needs.kernel.result != 'failure' && needs.kernel.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    container:
+      image: debian:trixie
+    steps:
+      - name: Install the publishing tooling
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends ca-certificates gh git gnupg dpkg-dev apt-utils python3
+
+      - name: Check out freedomnas-deb
+        uses: actions/checkout@v4
+        with:
+          path: freedomnas-deb
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: freedomnas-deb/pool
+          merge-multiple: true
+
+      - name: Import the signing key
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+        run: |
+          [ -n "$APT_SIGNING_KEY" ] || { echo "the APT_SIGNING_KEY secret is not set" >&2; exit 1; }
+          printf '%s\n' "$APT_SIGNING_KEY" | gpg --batch --quiet --import
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_APT_REPO: ${{ github.repository }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/freedomnas-deb"
+          cd freedomnas-deb
+          COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" python3 bin/publish-github.py

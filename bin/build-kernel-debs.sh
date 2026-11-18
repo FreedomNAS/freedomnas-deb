@@ -14,14 +14,14 @@
 # kernel. The tarballs are downloaded into CACHE_DIR and verified here,
 # before dpkg-buildpackage runs; the build itself needs no network.
 #
-# SKIP_PUBLISHED=1 does nothing when this version is already in the registry
-# under COMPONENT: the kernel takes the better part of an hour to build.
+# SKIP_PUBLISHED=1 does nothing when this version is already in the
+# apt-COMPONENT release: the kernel takes the better part of an hour to build.
 set -eu
 
 REPO_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 SRC="${1:-$(dirname "$REPO_DIR")/linux-freedomnas}"
 CACHE_DIR="${CACHE_DIR:-$REPO_DIR/.cache}"
-OWNER="${CODEBERG_OWNER:-FreedomNAS}"
+APT_REPO="${GITHUB_APT_REPO:-FreedomNAS/freedomnas-deb}"
 DISTRIBUTION="${DISTRIBUTION:-trixie}"
 COMPONENT="${COMPONENT:-main}"
 
@@ -34,8 +34,8 @@ version="$(pkgbuild pkgver)-$(pkgbuild pkgrel)"
 echo "==> linux-freedomnas $version"
 
 if [ -n "${SKIP_PUBLISHED:-}${CHECK_ONLY:-}" ]; then
-    url="https://codeberg.org/api/packages/$OWNER/debian/pool/$DISTRIBUTION/$COMPONENT/linux-image-freedomnas_${version}_amd64.deb"
-    if [ "$(curl -s -o /dev/null -r 0-0 -w '%{http_code}' "$url")" = 206 ]; then
+    url="https://github.com/$APT_REPO/releases/download/apt-$COMPONENT/linux-image-freedomnas_${version}_amd64.deb"
+    if [ "$(curl -sL -o /dev/null -r 0-0 -w '%{http_code}' "$url")" = 206 ]; then
         echo "    already published in $DISTRIBUTION/$COMPONENT"
         exit 0
     fi
