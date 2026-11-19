@@ -237,3 +237,19 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE/freedomnas-deb"
           cd freedomnas-deb
           COMPONENT="$([ "$REF" = main ] && echo main || echo dev)" python3 bin/publish-github.py
+
+  # A main build tells FreedomNAS/freedomnas-image, whose release-check
+  # starts the release images once all four package repositories hold the
+  # newest tag's version. Runs whether or not this build had anything new.
+  tell-images:
+    needs: [publish]
+    if: always() && (inputs.ref == 'main' || github.event.schedule == '47 * * * *')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Tell freedomnas-image
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_DISPATCH_TOKEN }}
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "the PACKAGES_DISPATCH_TOKEN secret is not set" >&2; exit 1; }
+          gh api repos/FreedomNAS/freedomnas-image/dispatches \
+            -f event_type=packages-published -f "client_payload[repository]=$GITHUB_REPOSITORY"
