@@ -33,8 +33,6 @@ bin/build-topgrade-deb.sh            # the recorded topgrade version
 bin/build-topgrade-deb.sh 17.12.3    # a specific one
 bin/build-kernel-debs.sh             # kernel, headers, ZFS userspace (~1 hour)
 COMPONENT=dev bin/build-repository-deb.sh   # APT source + key for `trixie dev`
-DRY_RUN=1 bin/prune-registry.py      # what the workflow would delete: all but the
-                                     # 2 newest snapshots, releases and kernels
 bin/make-repo.sh                     # APT metadata for whatever is in pool/
 GPG_KEY=<key-id> bin/make-repo.sh    # ...signed
 ```
@@ -122,10 +120,8 @@ apt update && apt install freedomnas-webui
 A machine reads one channel only, `apt-main` or `apt-dev`; the kernel and
 topgrade are in both.
 
-`bin/publish-codeberg.sh` and `bin/prune-registry.py` published to Codeberg's
-Debian registry until the move to GitHub (ADR-003); they are kept for
-reference. `bin/make-repo.sh` and the `dists/` tree remain for serving the
-pool as plain static files.
+`bin/make-repo.sh` and the `dists/` tree remain for serving the pool as
+plain static files.
 
 ## Using it from a static copy
 

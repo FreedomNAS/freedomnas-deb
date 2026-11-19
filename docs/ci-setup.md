@@ -6,9 +6,6 @@ them as a flat, signed APT repository in this repository's GitHub releases:
 package and the metadata (`Packages`, `Release`, `InRelease`, the signing
 key) are assets of that release (ADR-003 in freedomnas-specs).
 
-The Forgejo workflow under `.forgejo/workflows/` is switched off: it runs
-only when dispatched by hand, so that nothing is published twice.
-
 ## 1. The signing key (secret on the **FreedomNAS organization**)
 
 The repository is signed with the FreedomNAS archive key. Its public half is
