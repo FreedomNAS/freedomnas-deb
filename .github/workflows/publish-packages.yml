@@ -55,6 +55,11 @@ jobs:
             python3-all python3-setuptools pybuild-plugin-pyproject \
             mkdocs mkdocs-material python3-pymdownx
 
+      - name: Install Rust for topgrade
+        run: |
+          curl -fsSL --proto '=https' --tlsv1.2 https://sh.rustup.rs | sh -s -- -y -q --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - name: Check out freedomnas-deb
         uses: actions/checkout@v4
         with:

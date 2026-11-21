@@ -1,18 +1,15 @@
 #!/bin/sh
-# Build a Debian package from topgrade's upstream release binary.
-#
-# Debian does not package topgrade, and building it from source pulls the
-# Rust toolchain and several hundred crates. Upstream publishes a statically
-# linked musl binary, which needs no dependencies and no compiler: this
-# wraps that binary in a .deb and drops it into the pool.
+# Build a Debian package of topgrade from its source, without the
+# self-update feature, and drop it into the pool. Needs cargo (Rust 1.88 or
+# newer) on the PATH.
 #
 #   bin/build-topgrade-deb.sh [version]
 set -eu
 
-VERSION="${1:-17.12.3}"
+VERSION="${1:-17.17.0}"
 ARCH="amd64"
-TARBALL="topgrade-v${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-URL="https://github.com/topgrade-rs/topgrade/releases/download/v${VERSION}/${TARBALL}"
+TARBALL="topgrade-${VERSION}.tar.gz"
+URL="https://github.com/topgrade-rs/topgrade/archive/refs/tags/v${VERSION}.tar.gz"
 
 REPO_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 POOL="$REPO_DIR/pool/main/t/topgrade"
@@ -23,7 +20,7 @@ if [ -n "${PUBLISHED_PACKAGES:-}" ] && "$REPO_DIR/bin/is-published.sh" "$PUBLISH
 fi
 SUMS="$REPO_DIR/checksums/topgrade-${VERSION}.sha256"
 
-for tool in curl tar dpkg-deb sha256sum; do
+for tool in curl tar dpkg-deb sha256sum cargo objdump; do
     command -v "$tool" >/dev/null || { echo "build-topgrade-deb.sh: $tool not found" >&2; exit 1; }
 done
 
@@ -45,11 +42,17 @@ else
 fi
 
 tar -xzf "$WORK/$TARBALL" -C "$WORK"
-[ -f "$WORK/topgrade" ] || { echo "build-topgrade-deb.sh: no topgrade binary in $TARBALL" >&2; exit 1; }
+SRC="$WORK/topgrade-${VERSION}"
+echo "==> Building topgrade $VERSION"
+( cd "$SRC" && CARGO_TARGET_DIR="$WORK/target" cargo build --locked --release )
+BIN="$WORK/target/release/topgrade"
+[ -f "$BIN" ] || { echo "build-topgrade-deb.sh: cargo built no topgrade binary" >&2; exit 1; }
+GLIBC="$(objdump -T "$BIN" | sed -n 's/.*GLIBC_\([0-9.]*\).*/\1/p' | sort -V | tail -n 1)"
 
 PKG="$WORK/pkg"
 install -d "$PKG/DEBIAN" "$PKG/usr/bin" "$PKG/usr/share/doc/topgrade"
-install -m 755 "$WORK/topgrade" "$PKG/usr/bin/topgrade"
+install -m 755 "$BIN" "$PKG/usr/bin/topgrade"
+install -m 644 "$SRC/config.example.toml" "$PKG/usr/share/doc/topgrade/config.example.toml"
 
 # --apparent-size: on a compressing filesystem such as ZFS, du otherwise
 # reports the blocks allocated, and a 17 MB binary came out as 3 kB.
@@ -62,14 +65,15 @@ Priority: optional
 Architecture: ${ARCH}
 Maintainer: FreedomNAS Team <dev@freedomnas.io>
 Installed-Size: ${INSTALLED_KB}
+Depends: libc6 (>= ${GLIBC}), libgcc-s1
 Homepage: https://github.com/topgrade-rs/topgrade
 Description: Upgrade all the things
  Topgrade runs the update command of every package manager, language
  toolchain and container runtime it finds on the system, which is what
  FreedomNAS's Updates page drives.
  .
- This package ships upstream's statically linked release binary: it is not
- built from source and has no dependencies.
+ Built from source without the self-update feature, so updates come only
+ from APT.
 CONTROL
 
 cat > "$PKG/usr/share/doc/topgrade/copyright" <<'COPYRIGHT'

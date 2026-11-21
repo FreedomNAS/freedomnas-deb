@@ -6,7 +6,7 @@ themselves, and the one third-party package Debian does not carry.
 | Package | Source |
 |---------|--------|
 | `freedomnas-core`, `freedomnas-profiles`, `freedomnas-docs`, `freedomnas-webui`, `freedomnas-installer` | built from the checkouts beside this one |
-| `topgrade` | upstream's release binary, wrapped in a `.deb` |
+| `topgrade` | built from upstream's source, without the self-update feature |
 | `linux-image-freedomnas`, `linux-headers-freedomnas`, `zfsutils-freedomnas` | built from the `linux-freedomnas` checkout beside this one |
 | `freedomnas-repository` | this repository's APT source and signing key, one build per component |
 
@@ -15,12 +15,13 @@ distribution — ZFS included, through `contrib` and `stable-backports`, which
 the installer's `sources.list` enables — or comes from Docker's own
 repository. topgrade is the only real gap.
 
-Debian has no topgrade at all, and building it from source pulls the Rust
-toolchain and several hundred crates — on a NAS, a long compile for a
-program that upstream already ships as a statically linked musl binary.
-`bin/build-topgrade-deb.sh` wraps that binary in a `.deb`; nothing is
-compiled here. Gentoo gets the same treatment through
-`app-admin/topgrade-bin` in freedomnas-overlay.
+Debian has no topgrade at all. `bin/build-topgrade-deb.sh` builds it from
+upstream's source with cargo (the workflow installs Rust with rustup:
+topgrade needs 1.88, trixie has 1.85). Upstream's release binary is built
+with the self-update feature: before an update it tries to replace itself
+and waits for an answer the WebUI cannot give. Built without that feature,
+topgrade is updated only by APT. Arch and Gentoo build it the same way
+(`topgrade` in freedomnas-arch, `app-admin/topgrade` in freedomnas-overlay).
 
 ## Building
 
@@ -30,7 +31,7 @@ bin/build-freedomnas-debs.sh freedomnas-webui
 SNAPSHOT=1 bin/build-freedomnas-debs.sh   # ...as 0.9.9+<date and time>.<commit>
 bin/version.sh --snapshot ../freedomnas-core
 bin/build-topgrade-deb.sh            # the recorded topgrade version
-bin/build-topgrade-deb.sh 17.12.3    # a specific one
+bin/build-topgrade-deb.sh 17.16.0    # a specific one
 bin/build-kernel-debs.sh             # kernel, headers, ZFS userspace (~1 hour)
 COMPONENT=dev bin/build-repository-deb.sh   # APT source + key for `trixie dev`
 bin/make-repo.sh                     # APT metadata for whatever is in pool/
@@ -152,7 +153,7 @@ sudo apt update && apt-cache policy freedomnas-webui
 
 Once the repository is hosted, the Debian edition's installer profile gets
 a `repositories.core` entry that writes that file, and `topgrade` joins
-`packages/core.json` for Debian the way `app-admin/topgrade-bin` already
+`packages/core.json` for Debian the way `app-admin/topgrade` already
 has for Gentoo.
 
 ## License
